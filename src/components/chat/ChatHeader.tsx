@@ -1,4 +1,4 @@
-import { Landmark, Languages } from "lucide-react";
+import { Globe, ShieldCheck } from "lucide-react";
 import type { LanguageOption, SupportedLanguage } from "@/types/chat";
 
 interface ChatHeaderProps {
@@ -9,31 +9,31 @@ interface ChatHeaderProps {
 
 export function ChatHeader({ language, onLanguageChange, languageOptions }: ChatHeaderProps) {
   return (
-    <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/70 px-4 py-3 backdrop-blur-xl">
+    <header className="sticky top-0 z-20 border-b border-slate-700/50 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 px-4 py-3 text-white">
       <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <div className="rounded-xl bg-blue-700 p-2 text-white shadow-lg shadow-blue-700/30">
-            <Landmark className="size-4" />
-          </div>
+          <ShieldCheck className="size-4 text-indigo-300 sm:size-5" />
           <div>
-            <p className="text-sm font-semibold text-slate-900">Vernacular FD Advisor</p>
-            <p className="text-xs text-slate-500">Simple guidance for safe savings</p>
+            <p className="text-sm font-semibold sm:text-base">Vernacular FD Advisor</p>
+            <p className="text-xs text-slate-300">Powered by Blostem</p>
           </div>
         </div>
-        <label className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm">
-          <Languages className="size-4 text-slate-500" />
+        <label className="flex items-center gap-2 rounded-full border border-slate-600 bg-slate-800 px-3 py-1 text-sm text-slate-200 shadow-sm">
+          <Globe className="size-4 text-slate-300" />
+          <div className="relative">
           <select
             value={language}
             onChange={(event) => onLanguageChange(event.target.value as SupportedLanguage)}
-            className="bg-transparent text-sm font-medium text-slate-700 outline-none"
+            className="cursor-pointer appearance-none rounded-full border border-slate-600 bg-slate-800 px-3 py-1 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
             aria-label="Select language"
           >
             {languageOptions.map((option) => (
-              <option key={option.code} value={option.code}>
+              <option key={option.code} value={option.code} className="text-slate-900">
                 {option.label}
               </option>
             ))}
           </select>
+          </div>
         </label>
       </div>
     </header>

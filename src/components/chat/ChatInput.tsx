@@ -1,6 +1,5 @@
-import { FormEvent, useEffect, useRef } from "react";
-import { SendHorizontal } from "lucide-react";
-import { Button } from "@/components/ui/Button";
+import type { FormEvent } from "react";
+import { Send } from "lucide-react";
 
 interface ChatInputProps {
   value: string;
@@ -10,15 +9,7 @@ interface ChatInputProps {
 }
 
 export function ChatInput({ value, onChange, onSend, disabled = false }: ChatInputProps) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    if (!textareaRef.current) {
-      return;
-    }
-    textareaRef.current.style.height = "auto";
-    textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 144)}px`;
-  }, [value]);
+  const isSubmitDisabled = disabled || !value.trim();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -26,20 +17,24 @@ export function ChatInput({ value, onChange, onSend, disabled = false }: ChatInp
   }
 
   return (
-    <div className="sticky bottom-0 z-20 border-t border-slate-200 bg-white px-4 py-3 shadow-[0_-4px_20px_rgba(15,23,42,0.05)]">
-      <form onSubmit={handleSubmit} className="mx-auto flex w-full max-w-3xl items-end gap-2">
-        <textarea
-          ref={textareaRef}
+    <div className="sticky bottom-0 z-20 border-t border-slate-200/60 bg-white/80 p-4 backdrop-blur-md">
+      <form onSubmit={handleSubmit} className="mx-auto flex w-full max-w-3xl items-center gap-3">
+        <input
+          type="text"
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder="Ask about FD rates, safety, or how to invest..."
-          className="max-h-36 min-h-11 flex-1 resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 outline-none ring-blue-400 placeholder:text-slate-400 focus:ring-2"
-          rows={1}
+          className="w-full rounded-full border border-transparent bg-slate-100 px-6 py-3.5 text-sm text-slate-800 placeholder:text-slate-400 outline-none transition-all duration-300 focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 disabled:cursor-not-allowed disabled:opacity-70"
           disabled={disabled}
         />
-        <Button type="submit" disabled={disabled || !value.trim()} className="size-11 rounded-2xl p-0">
-          <SendHorizontal className="size-4" />
-        </Button>
+        <button
+          type="submit"
+          disabled={isSubmitDisabled}
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-indigo-600 to-blue-500 text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-indigo-500/30 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50"
+          aria-label="Send message"
+        >
+          <Send className="size-4" />
+        </button>
       </form>
     </div>
   );
