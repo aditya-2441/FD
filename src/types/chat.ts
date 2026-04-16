@@ -1,6 +1,6 @@
 export type ChatRole = "user" | "assistant";
 
-export type SupportedLanguage = "en" | "hi" | "mr" | "bho";
+export type SupportedLanguage = "en" | "hi" | "mr" | "bn";
 
 export interface LanguageOption {
   code: SupportedLanguage;

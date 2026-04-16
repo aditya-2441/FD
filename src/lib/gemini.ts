@@ -9,7 +9,7 @@ function mapLanguageCode(code: ChatRequest["language"]): string {
     en: "English",
     hi: "Hindi",
     mr: "Marathi",
-    bho: "Bhojpuri",
+    bn: "Bengali",
   };
 
   return map[code];

@@ -11,7 +11,7 @@ const languageOptions: LanguageOption[] = [
   { code: "en", label: "English" },
   { code: "hi", label: "Hindi" },
   { code: "mr", label: "Marathi" },
-  { code: "bho", label: "Bhojpuri" },
+  { code: "bn", label: "Bengali" },
 ];
 
 const initialMessage: ChatMessage = {
@@ -97,7 +97,7 @@ export default function Home() {
     <main className="flex min-h-screen flex-col bg-slate-50">
       <ChatHeader language={language} onLanguageChange={setLanguage} languageOptions={languageOptions} />
       <MessageList messages={messages} isTyping={isTyping} listEndRef={listEndRef} />
-      <ChatInput value={input} onChange={setInput} onSend={sendMessage} disabled={isTyping} />
+      <ChatInput value={input} onChange={setInput} onSend={sendMessage} disabled={isTyping} language={language} />
     </main>
   );
 }
