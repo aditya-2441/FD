@@ -7,12 +7,12 @@ export async function POST(req: NextRequest) {
     await connectToDatabase();
 
     const body = await req.json();
-    const { bankName, amount, tenor } = body;
+    const { bankName, amount, tenor, userId } = body;
 
     // Validate the incoming request
-    if (!bankName || !amount || !tenor) {
+    if (!bankName || !amount || !tenor || !userId) {
       return NextResponse.json(
-        { success: false, error: "Missing required booking details (bankName, amount, tenor)" },
+        { success: false, error: "Missing required booking details (bankName, amount, tenor, userId)" },
         { status: 400 }
       );
     }
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     const transactionId = `BLOS-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
 
     const booking = new Booking({
-      userId: 'GUEST_USER',
+      userId,
       bankName,
       amount,
       tenor,

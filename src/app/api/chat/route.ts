@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
+import connectToDatabase from '@/lib/mongodb';
+import Chat from '@/models/Chat';
 
 export async function POST(req: NextRequest) {
   try {
-    const { message, language } = await req.json();
+    const { message, language, userId, history = [] } = await req.json();
 
-    if (!message || !language) {
-      return NextResponse.json({ error: 'Message and language are required' }, { status: 400 });
+    if (!message || !language || !userId) {
+      return NextResponse.json({ error: 'Message, language, and userId are required' }, { status: 400 });
     }
 
     // 1. Fetch the live financial data from your Blostem Mock API
@@ -60,6 +62,7 @@ export async function POST(req: NextRequest) {
 
     const aiText = response.text ?? '';
     const cleanJsonString = aiText.replace(/```json/gi, '').replace(/```/g, '').trim();
+    let finalReply = aiText;
 
     try {
       const parsed = JSON.parse(cleanJsonString) as {
@@ -79,6 +82,7 @@ export async function POST(req: NextRequest) {
             bankName: parsed.bankName,
             amount: parsed.amount,
             tenor: parsed.tenor,
+            userId,
           }),
         });
 
@@ -89,15 +93,35 @@ export async function POST(req: NextRequest) {
         }
 
         const bookingData = bookingResult.data;
-        const receipt = `🎉 **Booking Successful!**\n\n**Bank:** ${bookingData.bankName}\n**Amount:** ₹${bookingData.amountBooked}\n**Tenor:** ${bookingData.tenor}\n**Transaction ID:** ${bookingData.transactionId}\n\nYour FD has been securely saved to our database. Is there anything else I can help you with?`;
-
-        return NextResponse.json({ reply: receipt }, { status: 200 });
+        finalReply = `🎉 **Booking Successful!**\n\n**Bank:** ${bookingData.bankName}\n**Amount:** ₹${bookingData.amountBooked}\n**Tenor:** ${bookingData.tenor}\n**Transaction ID:** ${bookingData.transactionId}\n\nYour FD has been securely saved to our database. Is there anything else I can help you with?`;
       }
     } catch {
       // If parsing fails, treat it as regular conversational text.
     }
 
-    return NextResponse.json({ reply: aiText }, { status: 200 });
+    const sanitizedHistory = Array.isArray(history)
+      ? history
+          .filter(
+            (entry): entry is { role: 'user' | 'assistant'; content: string } =>
+              (entry?.role === 'user' || entry?.role === 'assistant') &&
+              typeof entry?.content === 'string'
+          )
+          .map((entry) => ({ role: entry.role, content: entry.content }))
+      : [];
+
+    const updatedMessagesArray = [
+      ...sanitizedHistory,
+      { role: 'assistant' as const, content: finalReply },
+    ];
+
+    await connectToDatabase();
+    await Chat.findOneAndUpdate(
+      { userId },
+      { $set: { messages: updatedMessagesArray, updatedAt: Date.now() } },
+      { upsert: true }
+    );
+
+    return NextResponse.json({ reply: finalReply }, { status: 200 });
 
   } catch (error) {
     console.error('Gen AI Error:', error);

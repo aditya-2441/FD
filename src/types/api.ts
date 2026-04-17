@@ -30,6 +30,7 @@ export interface ChatRequest {
   message: string;
   language: SupportedLanguage;
   history?: ChatMessage[];
+  userId?: string;
 }
 
 export interface ChatResponse {
