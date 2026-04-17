@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
+import connectToDatabase from '../../../../lib/mongodb';
+import Booking from '../../../../models/Booking';
 
 export async function POST(req: NextRequest) {
   try {
+    await connectToDatabase();
+
     const body = await req.json();
-    const { bankName, amount, tenor, userId = "USR_8829" } = body;
+    const { bankName, amount, tenor } = body;
 
     // Validate the incoming request
-    if (!bankName || !amount) {
+    if (!bankName || !amount || !tenor) {
       return NextResponse.json(
-        { success: false, error: "Missing required booking details (bankName, amount)" }, 
+        { success: false, error: "Missing required booking details (bankName, amount, tenor)" },
         { status: 400 }
       );
     }
@@ -19,17 +23,29 @@ export async function POST(req: NextRequest) {
     // Generate a fake but realistic-looking banking reference number
     const transactionId = `BLOS-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
 
+    const booking = new Booking({
+      userId: 'GUEST_USER',
+      bankName,
+      amount,
+      tenor,
+      transactionId,
+    });
+
+    const savedBooking = await booking.save();
+
     // Return the successful mock response
     return NextResponse.json({
       success: true,
       data: {
-        transactionId,
-        status: "COMPLETED",
-        bankName,
-        amountBooked: amount,
-        tenor,
+        transactionId: savedBooking.transactionId,
+        status: savedBooking.status,
+        bankName: savedBooking.bankName,
+        amountBooked: savedBooking.amount,
+        tenor: savedBooking.tenor,
+        userId: savedBooking.userId,
+        createdAt: savedBooking.createdAt,
         maturityDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
-        message: `Successfully booked ₹${amount} FD with ${bankName}.`
+        message: `Successfully booked ₹${savedBooking.amount} FD with ${savedBooking.bankName}.`
       }
     }, { status: 200 });
 

@@ -52,12 +52,52 @@ export async function POST(req: NextRequest) {
                    1) Translate your response into ${language}. 
                    2) Simplify ALL financial jargon (e.g., explain '12M tenor' as 'kept safely for 1 year'). 
                    3) Keep answers conversational and concise (2-3 sentences max). 
-                   4) If they show intent to invest, guide them to confirm their bank choice and amount.`,
+                   4) If they show intent to invest, guide them to confirm their bank choice and amount.
+                   5) If the user explicitly confirms they want to book or invest in an FD, you must ONLY return a raw JSON object with no markdown, exactly like this: { "booking_intent": true, "bankName": "Suryoday", "amount": 10000, "tenor": "1 year" }. Otherwise, respond conversationally as a helpful advisor.`,
         temperature: 0.2, 
       }
     });
 
-    return NextResponse.json({ reply: response.text }, { status: 200 });
+    const aiText = response.text ?? '';
+    const cleanJsonString = aiText.replace(/```json/gi, '').replace(/```/g, '').trim();
+
+    try {
+      const parsed = JSON.parse(cleanJsonString) as {
+        booking_intent?: boolean;
+        bankName?: string;
+        amount?: number;
+        tenor?: string;
+      };
+
+      if (parsed.booking_intent === true) {
+        const bookingResponse = await fetch(`${baseUrl}/api/mock-blostem/booking`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            bankName: parsed.bankName,
+            amount: parsed.amount,
+            tenor: parsed.tenor,
+          }),
+        });
+
+        const bookingResult = await bookingResponse.json();
+
+        if (!bookingResponse.ok || !bookingResult?.success) {
+          throw new Error('Booking API request failed');
+        }
+
+        const bookingData = bookingResult.data;
+        const receipt = `🎉 **Booking Successful!**\n\n**Bank:** ${bookingData.bankName}\n**Amount:** ₹${bookingData.amountBooked}\n**Tenor:** ${bookingData.tenor}\n**Transaction ID:** ${bookingData.transactionId}\n\nYour FD has been securely saved to our database. Is there anything else I can help you with?`;
+
+        return NextResponse.json({ reply: receipt }, { status: 200 });
+      }
+    } catch {
+      // If parsing fails, treat it as regular conversational text.
+    }
+
+    return NextResponse.json({ reply: aiText }, { status: 200 });
 
   } catch (error) {
     console.error('Gen AI Error:', error);
