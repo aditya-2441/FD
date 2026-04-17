@@ -26,31 +26,53 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Initialize the AI
-    const ai = new GoogleGenAI({
+const ai = new GoogleGenAI({
       vertexai: true,
       project: process.env.GCP_PROJECT_ID as string,
       location: process.env.GCP_LOCATION as string,
     });
 
+    // Clean up the history array
+    const sanitizedHistory = Array.isArray(history)
+      ? history
+          .filter(
+            (entry): entry is { role: 'user' | 'assistant'; content: string } =>
+              (entry?.role === 'user' || entry?.role === 'assistant') &&
+              typeof entry?.content === 'string'
+          )
+          .map((entry) => ({ role: entry.role, content: entry.content }))
+      : [];
+
+    // Convert history into the exact format Gemini expects
+    const geminiContents = sanitizedHistory.map((msg) => ({
+      role: msg.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: msg.content }],
+    }));
+
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-pro',
-      contents: message,
+      contents: geminiContents,
       config: {
-        systemInstruction: `You are a Blostem Financial Advisor. Current FD Rates: Suryoday (8.5%), Axis Bank (7.1%), HDFC (7.0%). When a user asks about an FD, calculate the estimated maturity amount (using standard annual compound interest) and explain it conversationally in ${language}. If they confirm booking, your JSON output MUST now include these exact fields: { "booking_intent": true, "bankName": "Suryoday", "amount": 10000, "tenor": "1 year", "interestRate": 8.5, "maturityAmount": 10850 }. If the user confirms they want to book, you must return ONLY the raw JSON object. Do NOT include any conversational text, pleasantries, or markdown formatting before or after the JSON.`,
+        systemInstruction: `You are a Blostem Financial Advisor. Current FD Rates: Suryoday (8.5%), Axis Bank (7.1%), HDFC (7.0%). When a user asks about an FD, calculate the estimated maturity amount (using standard annual compound interest) and explain it conversationally in ${language}. If the user confirms they want to book, you must return ONLY a raw JSON object matching this schema using the ACTUAL details from the conversation: { "booking_intent": true, "bankName": "<Bank they chose>", "amount": <number requested>, "tenor": "<tenor requested>", "interestRate": <rate for that bank>, "maturityAmount": <calculated number> }. Do NOT include any conversational text, pleasantries, or markdown formatting before or after the JSON.`,
         temperature: 0.2, 
       }
     });
 
-    const aiText = response.text ?? '';
-    let parsedData: {
+const aiText = response.text ?? '';
+    let finalReply = aiText;
+
+    // 1. Define the exact shape of the data safely
+    interface BookingIntent {
       booking_intent?: boolean;
       bankName?: string;
       amount?: number;
       tenor?: string;
       interestRate?: number;
       maturityAmount?: number;
-    } | null = null;
-    let finalReply = aiText;
+    }
+
+    // 2. Apply it to the variable
+    let parsedData: BookingIntent | null = null;
 
     try {
       const startIndex = aiText.indexOf('{');
@@ -58,7 +80,8 @@ export async function POST(req: NextRequest) {
 
       if (startIndex !== -1 && endIndex !== -1) {
         const extractedJson = aiText.substring(startIndex, endIndex + 1);
-        parsedData = JSON.parse(extractedJson) as typeof parsedData;
+        // 3. Cast the parsed JSON directly to the interface
+        parsedData = JSON.parse(extractedJson) as BookingIntent;
       }
     } catch (error) {
       console.error('Failed to parse AI JSON:', error);
@@ -93,16 +116,6 @@ export async function POST(req: NextRequest) {
     } catch {
       // If booking flow fails, treat it as regular conversational text.
     }
-
-    const sanitizedHistory = Array.isArray(history)
-      ? history
-          .filter(
-            (entry): entry is { role: 'user' | 'assistant'; content: string } =>
-              (entry?.role === 'user' || entry?.role === 'assistant') &&
-              typeof entry?.content === 'string'
-          )
-          .map((entry) => ({ role: entry.role, content: entry.content }))
-      : [];
 
     const updatedMessagesArray = [
       ...sanitizedHistory,

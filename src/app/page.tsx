@@ -57,22 +57,22 @@ export default function Home() {
           const historyResponse = await fetch(`/api/chat/history?userId=${user.uid}`);
           if (historyResponse.ok) {
             const historyData = await historyResponse.json();
-            const persistedMessages = Array.isArray(historyData?.messages)
-              ? historyData.messages
-                  .filter(
-                    (entry: { role?: string; content?: string }) =>
-                      (entry.role === "user" || entry.role === "assistant") &&
-                      typeof entry.content === "string"
-                  )
-                  .map(
-                    (entry: { role: "user" | "assistant"; content: string }): ChatMessage => ({
-                      id: crypto.randomUUID(),
-                      role: entry.role,
-                      content: entry.content,
-                      createdAt: new Date().toISOString(),
-                    })
-                  )
-              : [];
+            const chatArray = Array.isArray(historyData) ? historyData : (historyData?.messages || []);
+
+            const persistedMessages = chatArray
+              .filter(
+                (entry: { role?: string; content?: string }) =>
+                  (entry.role === "user" || entry.role === "assistant") &&
+                  typeof entry.content === "string"
+              )
+              .map(
+                (entry: { role: "user" | "assistant"; content: string }): ChatMessage => ({
+                  id: crypto.randomUUID(),
+                  role: entry.role,
+                  content: entry.content,
+                  createdAt: new Date().toISOString(),
+                })
+              );
 
             setMessages(persistedMessages.length > 0 ? persistedMessages : [initialMessage]);
           } else {
@@ -178,8 +178,9 @@ export default function Home() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col bg-slate-50">
-      <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 sm:px-6">
+    <main className="flex h-[100dvh] flex-col overflow-hidden bg-slate-50">
+      {/* HEADER: Locked to top */}
+      <header className="flex-none shrink-0 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 sm:px-6">
         <h1 className="text-base font-semibold text-slate-900">Blostem Assistant</h1>
         <button
           type="button"
@@ -190,8 +191,16 @@ export default function Home() {
           Sign Out
         </button>
       </header>
-      <MessageList messages={messages} isTyping={isTyping} listEndRef={listEndRef} />
-      <ChatInput value={input} onChange={setInput} onSend={sendMessage} disabled={isTyping} language={language} />
+      
+      {/* CHAT AREA: Flex-1 takes up remaining space and scrolls */}
+      <div className="flex-1 overflow-y-auto">
+        <MessageList messages={messages} isTyping={isTyping} listEndRef={listEndRef} />
+      </div>
+
+      {/* INPUT AREA: Locked to bottom */}
+      <div className="flex-none shrink-0 bg-white">
+        <ChatInput value={input} onChange={setInput} onSend={sendMessage} disabled={isTyping} language={language} />
+      </div>
     </main>
   );
 }
