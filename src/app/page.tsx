@@ -41,6 +41,9 @@ export default function Home() {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!user) {
         localStorage.removeItem("userId");
+        localStorage.removeItem("userName");
+        localStorage.removeItem("userEmail");
+        localStorage.removeItem("userPhone");
         router.replace("/login");
         return;
       }
@@ -92,6 +95,9 @@ export default function Home() {
       await signOut(auth);
     } finally {
       localStorage.removeItem("userId");
+      localStorage.removeItem("userName");
+      localStorage.removeItem("userEmail");
+      localStorage.removeItem("userPhone");
       router.replace("/login");
     }
   }

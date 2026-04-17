@@ -5,6 +5,8 @@ export interface IBooking {
   bankName: string;
   amount: number;
   tenor: string;
+  interestRate: number;
+  maturityAmount: number;
   transactionId: string;
   status: string;
   createdAt: Date;
@@ -25,6 +27,14 @@ const BookingSchema = new Schema<IBooking>({
   },
   tenor: {
     type: String,
+    required: true,
+  },
+  interestRate: {
+    type: Number,
+    required: true,
+  },
+  maturityAmount: {
+    type: Number,
     required: true,
   },
   transactionId: {

@@ -7,12 +7,16 @@ export async function POST(req: NextRequest) {
     await connectToDatabase();
 
     const body = await req.json();
-    const { bankName, amount, tenor, userId } = body;
+    const { bankName, amount, tenor, userId, interestRate, maturityAmount } = body;
 
     // Validate the incoming request
-    if (!bankName || !amount || !tenor || !userId) {
+    if (!bankName || amount == null || !tenor || !userId || interestRate == null || maturityAmount == null) {
       return NextResponse.json(
-        { success: false, error: "Missing required booking details (bankName, amount, tenor, userId)" },
+        {
+          success: false,
+          error:
+            "Missing required booking details (bankName, amount, tenor, userId, interestRate, maturityAmount)",
+        },
         { status: 400 }
       );
     }
@@ -28,6 +32,8 @@ export async function POST(req: NextRequest) {
       bankName,
       amount,
       tenor,
+      interestRate,
+      maturityAmount,
       transactionId,
     });
 
@@ -42,6 +48,8 @@ export async function POST(req: NextRequest) {
         bankName: savedBooking.bankName,
         amountBooked: savedBooking.amount,
         tenor: savedBooking.tenor,
+        interestRate: savedBooking.interestRate,
+        maturityAmount: savedBooking.maturityAmount,
         userId: savedBooking.userId,
         createdAt: savedBooking.createdAt,
         maturityDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],

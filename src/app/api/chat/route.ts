@@ -11,14 +11,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Message, language, and userId are required' }, { status: 400 });
     }
 
-    // 1. Fetch the live financial data from your Blostem Mock API
-    // (Using req.nextUrl.origin ensures it works dynamically on localhost and in production)
     const baseUrl = req.nextUrl.origin;
-    const ratesResponse = await fetch(`${baseUrl}/api/mock-blostem`);
-    const ratesData = await ratesResponse.json();
-    
-    // Convert the rates into a readable string for the AI
-    const liveRatesContext = JSON.stringify(ratesData.data);
     const projectId = process.env.GCP_PROJECT_ID;
     const location = process.env.GCP_LOCATION;
 
@@ -39,49 +32,51 @@ export async function POST(req: NextRequest) {
       location: process.env.GCP_LOCATION as string,
     });
 
-    // 3. Inject the data into the System Prompt
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-pro',
       contents: message,
       config: {
-        systemInstruction: `You are a friendly, patient financial advisor for rural Indian users. 
-                   The user is asking about Fixed Deposits (FDs). 
-                   
-                   CURRENT LIVE FD RATES (Use these if asked):
-                   ${liveRatesContext}
-
-                   Your goals: 
-                   1) Translate your response into ${language}. 
-                   2) Simplify ALL financial jargon (e.g., explain '12M tenor' as 'kept safely for 1 year'). 
-                   3) Keep answers conversational and concise (2-3 sentences max). 
-                   4) If they show intent to invest, guide them to confirm their bank choice and amount.
-                   5) If the user explicitly confirms they want to book or invest in an FD, you must ONLY return a raw JSON object with no markdown, exactly like this: { "booking_intent": true, "bankName": "Suryoday", "amount": 10000, "tenor": "1 year" }. Otherwise, respond conversationally as a helpful advisor.`,
+        systemInstruction: `You are a Blostem Financial Advisor. Current FD Rates: Suryoday (8.5%), Axis Bank (7.1%), HDFC (7.0%). When a user asks about an FD, calculate the estimated maturity amount (using standard annual compound interest) and explain it conversationally in ${language}. If they confirm booking, your JSON output MUST now include these exact fields: { "booking_intent": true, "bankName": "Suryoday", "amount": 10000, "tenor": "1 year", "interestRate": 8.5, "maturityAmount": 10850 }. If the user confirms they want to book, you must return ONLY the raw JSON object. Do NOT include any conversational text, pleasantries, or markdown formatting before or after the JSON.`,
         temperature: 0.2, 
       }
     });
 
     const aiText = response.text ?? '';
-    const cleanJsonString = aiText.replace(/```json/gi, '').replace(/```/g, '').trim();
+    let parsedData: {
+      booking_intent?: boolean;
+      bankName?: string;
+      amount?: number;
+      tenor?: string;
+      interestRate?: number;
+      maturityAmount?: number;
+    } | null = null;
     let finalReply = aiText;
 
     try {
-      const parsed = JSON.parse(cleanJsonString) as {
-        booking_intent?: boolean;
-        bankName?: string;
-        amount?: number;
-        tenor?: string;
-      };
+      const startIndex = aiText.indexOf('{');
+      const endIndex = aiText.lastIndexOf('}');
 
-      if (parsed.booking_intent === true) {
+      if (startIndex !== -1 && endIndex !== -1) {
+        const extractedJson = aiText.substring(startIndex, endIndex + 1);
+        parsedData = JSON.parse(extractedJson) as typeof parsedData;
+      }
+    } catch (error) {
+      console.error('Failed to parse AI JSON:', error);
+    }
+
+    try {
+      if (parsedData && parsedData.booking_intent === true) {
         const bookingResponse = await fetch(`${baseUrl}/api/mock-blostem/booking`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            bankName: parsed.bankName,
-            amount: parsed.amount,
-            tenor: parsed.tenor,
+            bankName: parsedData.bankName,
+            amount: parsedData.amount,
+            tenor: parsedData.tenor,
+            interestRate: parsedData.interestRate,
+            maturityAmount: parsedData.maturityAmount,
             userId,
           }),
         });
@@ -93,10 +88,10 @@ export async function POST(req: NextRequest) {
         }
 
         const bookingData = bookingResult.data;
-        finalReply = `🎉 **Booking Successful!**\n\n**Bank:** ${bookingData.bankName}\n**Amount:** ₹${bookingData.amountBooked}\n**Tenor:** ${bookingData.tenor}\n**Transaction ID:** ${bookingData.transactionId}\n\nYour FD has been securely saved to our database. Is there anything else I can help you with?`;
+        finalReply = `🎉 **Booking Successful!**\n\n**Bank:** ${bookingData.bankName}\n**Amount:** ₹${bookingData.amountBooked}\n**Tenor:** ${bookingData.tenor}\n**Interest Rate:** ${bookingData.interestRate}%\n**Maturity Amount:** ₹${bookingData.maturityAmount}\n**Transaction ID:** ${bookingData.transactionId}\n\nYour FD has been securely saved to our database. Is there anything else I can help you with?`;
       }
     } catch {
-      // If parsing fails, treat it as regular conversational text.
+      // If booking flow fails, treat it as regular conversational text.
     }
 
     const sanitizedHistory = Array.isArray(history)

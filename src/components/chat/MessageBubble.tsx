@@ -1,5 +1,6 @@
 import type { ChatMessage } from "@/types/chat";
 import { CheckCircle, Download } from "lucide-react";
+import { generateFDReceipt } from "@/lib/generateReceipt";
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -14,6 +15,8 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     const bankMatch = message.content.match(/\*\*Bank:\*\*\s*(.+)/);
     const amountMatch = message.content.match(/\*\*Amount:\*\*\s*₹\s?(.+)/);
     const tenorMatch = message.content.match(/\*\*Tenor:\*\*\s*(.+)/);
+    const interestRateMatch = message.content.match(/\*\*Interest Rate:\*\*\s*(.+)/);
+    const maturityAmountMatch = message.content.match(/\*\*Maturity Amount:\*\*\s*₹\s?(.+)/);
     const transactionMatch = message.content.match(
       /\*\*Transaction ID:\*\*\s*(.+)/
     );
@@ -21,7 +24,44 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     const bankName = bankMatch?.[1]?.trim() || "N/A";
     const amount = amountMatch?.[1]?.trim() || "N/A";
     const tenor = tenorMatch?.[1]?.trim() || "N/A";
+    const interestRate = interestRateMatch?.[1]?.trim() || "N/A";
+    const maturityAmount = maturityAmountMatch?.[1]?.trim() || "N/A";
     const transactionId = transactionMatch?.[1]?.trim() || "N/A";
+
+    const parseNumber = (value: string) =>
+      Number.parseFloat(value.replace(/[^\d.]/g, ""));
+
+    const handleDownload = async () => {
+      const uid = localStorage.getItem("userId");
+      if (!uid) {
+        return;
+      }
+
+      const res = await fetch(`/api/user?uid=${uid}`);
+      if (!res.ok) {
+        return;
+      }
+
+      const dbUserResponse = await res.json();
+      const dbUser = dbUserResponse?.user;
+      const currentUser = {
+        name: dbUser?.name || "Blostem Customer",
+        email: dbUser?.email || "N/A",
+        phone: dbUser?.phone || "N/A",
+      };
+
+      generateFDReceipt(
+        {
+          transactionId,
+          bankName,
+          amount: parseNumber(amount),
+          tenor,
+          interestRate: parseNumber(interestRate),
+          maturityAmount: parseNumber(maturityAmount),
+        },
+        currentUser
+      );
+    };
 
     return (
       <div className="flex justify-start">
@@ -60,10 +100,23 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                 {transactionId}
               </p>
             </div>
+            <div>
+              <p className="text-xs uppercase tracking-wider text-emerald-600">
+                Interest Rate
+              </p>
+              <p className="text-sm font-semibold text-slate-800">{interestRate}</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-wider text-emerald-600">
+                Maturity Amount
+              </p>
+              <p className="text-sm font-semibold text-slate-800">₹{maturityAmount}</p>
+            </div>
           </div>
 
           <button
             type="button"
+            onClick={handleDownload}
             className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 py-2.5 text-sm font-medium text-white transition-colors hover:bg-emerald-700"
           >
             <Download className="h-4 w-4" />

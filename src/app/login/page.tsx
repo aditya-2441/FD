@@ -138,6 +138,9 @@ export default function LoginPage() {
       }
 
       localStorage.setItem("userId", uid);
+      localStorage.setItem("userName", name.trim());
+      localStorage.setItem("userEmail", email.trim());
+      localStorage.setItem("userPhone", normalizePhone(phone));
       router.replace("/");
     } catch (error) {
       console.error("OTP verification failed:", error);
