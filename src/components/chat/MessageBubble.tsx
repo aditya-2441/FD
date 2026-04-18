@@ -1,12 +1,14 @@
 import type { ChatMessage } from "@/types/chat";
-import { CheckCircle, Download } from "lucide-react";
+import type { SupportedLanguage } from "@/types/chat";
+import { CheckCircle, Download, Volume2 } from "lucide-react";
 import { generateFDReceipt } from "@/lib/generateReceipt";
 
 interface MessageBubbleProps {
   message: ChatMessage;
+  language: SupportedLanguage;
 }
 
-export function MessageBubble({ message }: MessageBubbleProps) {
+export function MessageBubble({ message, language }: MessageBubbleProps) {
   const isUser = message.role === "user";
   const isBookingSuccess =
     !isUser && message.content.includes("Booking Successful!");
@@ -129,14 +131,37 @@ export function MessageBubble({ message }: MessageBubbleProps) {
 
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-      <div
-        className={`max-w-[85%] px-5 py-3.5 text-sm leading-relaxed md:max-w-[70%] ${
-          isUser
-            ? "rounded-2xl rounded-tr-sm bg-gradient-to-tr from-indigo-600 to-blue-500 text-white shadow-md shadow-indigo-500/20"
-            : "rounded-2xl rounded-tl-sm border border-slate-100 bg-white text-slate-800 shadow-sm"
-        }`}
-      >
-        {message.content}
+      <div className="max-w-[85%] md:max-w-[70%]">
+        <div
+          className={`px-5 py-3.5 text-sm leading-relaxed ${
+            isUser
+              ? "rounded-2xl rounded-tr-sm bg-gradient-to-tr from-indigo-600 to-blue-500 text-white shadow-md shadow-indigo-500/20"
+              : "rounded-2xl rounded-tl-sm border border-slate-100 bg-white text-slate-800 shadow-sm"
+          }`}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="whitespace-pre-wrap">{message.content}</div>
+
+            {message.role === "assistant" ? (
+              <button
+                type="button"
+                onClick={() => {
+                  const targetLang = language === "hi" ? "hi-IN" : language === "mr" ? "mr-IN" : language === "bn" ? "bn-IN" : "en-IN";
+                  const utterance = new SpeechSynthesisUtterance(message.content);
+                  utterance.lang = targetLang;
+                  const voices = window.speechSynthesis.getVoices();
+                  const nativeVoice = voices.find(v => v.lang === targetLang || v.lang.startsWith(language)) || voices.find(v => v.lang.startsWith('en'));
+                  if (nativeVoice) utterance.voice = nativeVoice;
+                  window.speechSynthesis.speak(utterance);
+                }}
+                className="shrink-0 rounded-md p-1 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                aria-label="Replay message"
+              >
+                <Volume2 className="h-4 w-4" />
+              </button>
+            ) : null}
+          </div>
+        </div>
       </div>
     </div>
   );

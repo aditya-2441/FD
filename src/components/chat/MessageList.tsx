@@ -1,19 +1,20 @@
 import type { RefObject } from "react";
-import type { ChatMessage } from "@/types/chat";
+import type { ChatMessage, SupportedLanguage } from "@/types/chat";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 
 interface MessageListProps {
   messages: ChatMessage[];
   isTyping: boolean;
   listEndRef: RefObject<HTMLDivElement>;
+  language: SupportedLanguage;
 }
 
-export function MessageList({ messages, isTyping, listEndRef }: MessageListProps) {
+export function MessageList({ messages, isTyping, listEndRef, language }: MessageListProps) {
   return (
     <div className="flex-1 overflow-y-auto bg-[#F8FAFC] px-4 py-5">
       <div className="mx-auto flex w-full max-w-3xl flex-col space-y-6">
         {messages.map((message) => (
-          <MessageBubble key={message.id} message={message} />
+          <MessageBubble key={message.id} message={message} language={language} />
         ))}
 
         {isTyping && (

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { LogOut } from "lucide-react";
+import { LogOut, User } from "lucide-react";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { MessageList } from "@/components/chat/MessageList";
 import type { ApiErrorResponse, ChatRequest, ChatResponse } from "@/types/api";
@@ -153,6 +153,17 @@ export default function Home() {
         createdAt: new Date().toISOString(),
       };
       setMessages((current) => [...current, assistantMessage]);
+
+      const targetLang = language === "hi" ? "hi-IN" : language === "mr" ? "mr-IN" : language === "bn" ? "bn-IN" : "en-IN";
+      const utterance = new SpeechSynthesisUtterance(data.reply);
+      utterance.lang = targetLang;
+      
+      // Force the browser to find a native regional voice
+      const voices = window.speechSynthesis.getVoices();
+      const nativeVoice = voices.find(v => v.lang === targetLang || v.lang.startsWith(language)) || voices.find(v => v.lang.startsWith('en'));
+      if (nativeVoice) utterance.voice = nativeVoice;
+      
+      window.speechSynthesis.speak(utterance);
     } catch (error) {
       const fallbackMessage: ChatMessage = {
         id: crypto.randomUUID(),
@@ -195,6 +206,14 @@ export default function Home() {
           </select>
           <button
             type="button"
+            onClick={() => router.push('/profile')}
+            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100"
+          >
+            <User className="h-4 w-4" />
+            Profile
+          </button>
+          <button
+            type="button"
             onClick={handleSignOut}
             className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-rose-600 transition-colors hover:bg-rose-50"
           >
@@ -206,7 +225,7 @@ export default function Home() {
       
       {/* CHAT AREA: Flex-1 takes up remaining space and scrolls */}
       <div className="flex-1 overflow-y-auto">
-        <MessageList messages={messages} isTyping={isTyping} listEndRef={listEndRef} />
+        <MessageList messages={messages} isTyping={isTyping} listEndRef={listEndRef} language={language} />
       </div>
 
       {/* INPUT AREA: Locked to bottom */}

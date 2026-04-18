@@ -1,36 +1,73 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Blostem | AI-Native Vernacular Financial Advisor
+
+Blostem is a **full-stack, AI-driven fintech platform** built for a hackathon to make fixed-deposit discovery and booking **simple, trustworthy, and vernacular-first**. It combines a production-style admin console, dynamic AI grounding from MongoDB, and a chat UX with native speech playback—designed to reduce hallucinations and increase user confidence in financial decisions.
+
+## Key Features
+
+- 🧠 **Vernacular AI Engine**: Powered by **Gemini 2.5 Pro**, capable of conversing naturally in **English, Hindi, Marathi, and Bengali**, while extracting **structured JSON booking intents**.
+- 🔊 **Native Text-to-Speech**: Integrated **Web Speech API** for native regional voice playback of AI responses.
+- 🔐 **Secure Authentication**: **Firebase Phone Auth** with invisible reCAPTCHA and **MongoDB user persistence**.
+- 🧩 **Dynamic AI Grounding**: An **Admin Bank Settings** database dynamically updates the AI’s system instructions in real-time, **preventing hallucinations** and enforcing supported-bank constraints.
+- 📈 **Executive Admin Dashboard**: Live KPIs, **batch CSV exports**, CRM drill-downs, and a **Gemini-powered “AI Strategy Insights”** report generator.
+- 🧾 **User Portfolios**: Dedicated user profile pages with automated, branded **PDF receipt generation** for booked Fixed Deposits.
+
+## Tech Stack
+
+| Layer | Tech |
+|------|------|
+| **Frontend** | Next.js (App Router), Tailwind CSS, Lucide Icons |
+| **Backend** | Next.js API Routes, Node.js |
+| **Database** | MongoDB (Mongoose) |
+| **AI & LLM** | Google Cloud Vertex AI (Gemini 2.5 Pro) |
+| **Auth** | Firebase Authentication |
+| **PDF Generation** | jsPDF (+ `jspdf-autotable`) |
 
 ## Getting Started
 
-First, run the development server:
+### Installation
+
+```bash
+npm install
+```
+
+### Run the dev server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment Variables
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+Create a `.env.local` file in the project root with the following keys:
 
-## Learn More
+```bash
+# Database
+MONGODB_URI="mongodb+srv://<user>:<password>@<cluster>/<db>?retryWrites=true&w=majority"
 
-To learn more about Next.js, take a look at the following resources:
+# Firebase (client)
+NEXT_PUBLIC_FIREBASE_API_KEY="..."
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="..."
+NEXT_PUBLIC_FIREBASE_PROJECT_ID="..."
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="..."
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="..."
+NEXT_PUBLIC_FIREBASE_APP_ID="..."
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Vertex AI / Gemini
+GCP_PROJECT_ID="your-gcp-project-id"
+GCP_LOCATION="us-central1"
+GOOGLE_APPLICATION_CREDENTIALS="/absolute/path/to/service-account.json"
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+Notes:
+- **`GOOGLE_APPLICATION_CREDENTIALS`** should point to a valid Google Cloud service account JSON file with permission to access Vertex AI.
+- The Admin AI endpoints rely on **Vertex AI** credentials being available at runtime.
 
-## Deploy on Vercel
+## Project Architecture (The “Flex” Section)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Blostem’s core reliability pattern is **Dynamic Database Grounding**: supported bank names and FD rates live in MongoDB and are fetched at request time by the chat API. This means that updating bank rates in the Admin Settings UI **immediately updates the AI’s allowed bank list and the rates used for maturity calculations**—without redeploying code. The result is a tighter “AI + data” feedback loop that reduces hallucinations, enforces policy constraints, and keeps outputs aligned with real system configuration.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+## Developed By
+
+**Aditya Singh**
