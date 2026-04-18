@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import connectToDatabase from '@/lib/mongodb';
 import Chat from '@/models/Chat';
+import Bank from '@/models/Bank';
 
 export async function POST(req: NextRequest) {
   try {
@@ -24,6 +25,11 @@ export async function POST(req: NextRequest) {
     if (!projectId || !location) {
       return NextResponse.json({ error: 'Server config missing Project ID or Location' }, { status: 500 });
     }
+
+    await connectToDatabase();
+    const banks = await Bank.find();
+    const rateString = banks.map(b => `${b.name} (${b.interestRate}%)`).join(', ');
+    const effectiveRateString = rateString || "Suryoday (8.5%), Axis Bank (7.1%), HDFC (7.0%)";
 
     // 2. Initialize the AI
 const ai = new GoogleGenAI({
@@ -53,7 +59,7 @@ const ai = new GoogleGenAI({
       model: 'gemini-2.5-pro',
       contents: geminiContents,
       config: {
-        systemInstruction: `You are a Blostem Financial Advisor. Current FD Rates: Suryoday (8.5%), Axis Bank (7.1%), HDFC (7.0%). When a user asks about an FD, calculate the estimated maturity amount (using standard annual compound interest) and explain it conversationally in ${language}. If the user confirms they want to book, you must return ONLY a raw JSON object matching this schema using the ACTUAL details from the conversation: { "booking_intent": true, "bankName": "<Bank they chose>", "amount": <number requested>, "tenor": "<tenor requested>", "interestRate": <rate for that bank>, "maturityAmount": <calculated number> }. Do NOT include any conversational text, pleasantries, or markdown formatting before or after the JSON.`,
+        systemInstruction: `You are a Blostem Financial Advisor. Current FD Rates: ${effectiveRateString}. When a user asks about an FD, calculate the estimated maturity amount (using standard annual compound interest) and explain it conversationally in ${language}. If the user confirms they want to book, you must return ONLY a raw JSON object matching this schema using the ACTUAL details from the conversation: { "booking_intent": true, "bankName": "<Bank they chose>", "amount": <number requested>, "tenor": "<tenor requested>", "interestRate": <rate for that bank>, "maturityAmount": <calculated number> }. Do NOT include any conversational text, pleasantries, or markdown formatting before or after the JSON.`,
         temperature: 0.2, 
       }
     });
@@ -122,7 +128,6 @@ const aiText = response.text ?? '';
       { role: 'assistant' as const, content: finalReply },
     ];
 
-    await connectToDatabase();
     await Chat.findOneAndUpdate(
       { userId },
       { $set: { messages: updatedMessagesArray, updatedAt: Date.now() } },
