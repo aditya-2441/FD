@@ -20,6 +20,7 @@ declare global {
 
 export default function LoginPage() {
   const router = useRouter();
+  const ADMIN_PHONE = "+911234567890"; 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -33,7 +34,11 @@ export default function LoginPage() {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         localStorage.setItem("userId", user.uid);
-        router.replace("/");
+        if (user.phoneNumber === ADMIN_PHONE) {
+          router.replace("/admin");
+        } else {
+          router.replace("/");
+        }
       }
     });
 
@@ -141,7 +146,11 @@ export default function LoginPage() {
       localStorage.setItem("userName", name.trim());
       localStorage.setItem("userEmail", email.trim());
       localStorage.setItem("userPhone", normalizePhone(phone));
-      router.replace("/");
+      if (normalizePhone(phone) === ADMIN_PHONE) {
+        router.replace("/admin");
+      } else {
+        router.replace("/");
+      }
     } catch (error) {
       console.error("OTP verification failed:", error);
       setErrorMessage(
