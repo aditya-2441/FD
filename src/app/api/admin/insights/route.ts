@@ -26,7 +26,7 @@ export async function GET() {
 
     const prompt = `You are a Chief Financial Officer analyzing Blostem's recent FD bookings. Here is the JSON data: ${JSON.stringify(
       bookings
-    )}. Provide a 3-bullet-point strategic insight report highlighting trends, popular banks, or user behavior. Keep it professional, concise, and actionable.`;
+    )}. Provide a 3-bullet-point strategic insight report highlighting trends, popular banks, or user behavior. Keep it professional, concise, and actionable. Output the 3 bullet points using strict HTML <ul> and <li> tags. Add <strong> tags for emphasis. Do not use markdown.`;
 
     const response = await ai.models.generateContent({
       model: "gemini-2.5-pro",

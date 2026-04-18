@@ -1,7 +1,9 @@
 import { connectToDatabase } from "@/lib/mongodb";
 import Booking from "@/models/Booking";
-import { ExportButton } from "@/components/admin/ExportButton";
 import { AIInsights } from "@/components/admin/AIInsights";
+import User from "@/models/User";
+import Link from "next/link";
+import { AdminTable } from "@/components/admin/AdminTable";
 
 function formatRupee(value: number): string {
   return new Intl.NumberFormat("en-IN", {
@@ -11,34 +13,46 @@ function formatRupee(value: number): string {
   }).format(value);
 }
 
-function formatDateBooked(date: Date | string | undefined): string {
-  if (!date) {
-    return "—";
-  }
-  const d = typeof date === "string" ? new Date(date) : date;
-  return new Intl.DateTimeFormat("en-IN", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(d);
-}
-
 export default async function AdminPage() {
   await connectToDatabase();
   const rawBookings = await Booking.find().sort({ createdAt: -1 }).lean();
-  const bookings = rawBookings.map((booking) => ({
-    _id: String(booking._id),
-    transactionId: booking.transactionId as string,
-    bankName: booking.bankName as string,
-    amount: booking.amount as number,
-    tenor: booking.tenor as string,
-    interestRate: booking.interestRate as number,
-    maturityAmount: booking.maturityAmount as number,
-    createdAt: booking.createdAt ? new Date(booking.createdAt as unknown as string | number | Date).toISOString() : "",
-  }));
+  const rawUsers = await User.find().lean();
 
-  const totalAUM = bookings.reduce((sum, booking) => sum + (Number(booking.amount) || 0), 0);
-  const totalBookings = bookings.length;
-  const topBankTotals = bookings.reduce<Record<string, number>>((acc, booking) => {
+  const userByUid = new Map<string, { name: string; phone: string; email: string }>(
+    rawUsers.map((u) => [
+      String((u as { uid?: string }).uid ?? ""),
+      {
+        name: String((u as { name?: string }).name ?? ""),
+        phone: String((u as { phone?: string }).phone ?? ""),
+        email: String((u as { email?: string }).email ?? ""),
+      },
+    ])
+  );
+
+  const enrichedBookings = rawBookings.map((booking) => {
+    const userId = String((booking as { userId?: string }).userId ?? "");
+    const user = userByUid.get(userId);
+    return {
+      _id: String(booking._id),
+      userId,
+      userName: user?.name || "Unknown",
+      userPhone: user?.phone || "—",
+      userEmail: user?.email || "—",
+      transactionId: booking.transactionId as string,
+      bankName: booking.bankName as string,
+      amount: booking.amount as number,
+      tenor: booking.tenor as string,
+      interestRate: booking.interestRate as number,
+      maturityAmount: booking.maturityAmount as number,
+      createdAt: booking.createdAt
+        ? new Date(booking.createdAt as unknown as string | number | Date).toISOString()
+        : "",
+    };
+  });
+
+  const totalAUM = enrichedBookings.reduce((sum, booking) => sum + (Number(booking.amount) || 0), 0);
+  const totalBookings = enrichedBookings.length;
+  const topBankTotals = enrichedBookings.reduce<Record<string, number>>((acc, booking) => {
     const name = booking.bankName || "Unknown";
     acc[name] = (acc[name] ?? 0) + (Number(booking.amount) || 0);
     return acc;
@@ -50,10 +64,17 @@ export default async function AdminPage() {
     <div className="min-h-screen bg-slate-50">
       <header className="border-b border-slate-200 bg-white px-4 py-4 shadow-sm sm:px-6">
         <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4">
-        <h1 className="text-lg font-semibold tracking-tight text-slate-900 sm:text-xl">
-          Blostem System Admin - Investment Overview
-        </h1>
-          <ExportButton data={bookings} />
+          <div className="flex items-center gap-3">
+            <h1 className="text-lg font-semibold tracking-tight text-slate-900 sm:text-xl">
+              Blostem System Admin - Investment Overview
+            </h1>
+            <Link
+              href="/admin/settings"
+              className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            >
+              Bank Settings
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -81,80 +102,7 @@ export default async function AdminPage() {
 
         <AIInsights />
 
-        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] border-collapse text-left text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50">
-                  <th className="whitespace-nowrap px-4 py-3 font-semibold text-slate-700">
-                    Transaction ID
-                  </th>
-                  <th className="whitespace-nowrap px-4 py-3 font-semibold text-slate-700">
-                    Bank Name
-                  </th>
-                  <th className="whitespace-nowrap px-4 py-3 font-semibold text-slate-700">
-                    Amount Invested
-                  </th>
-                  <th className="whitespace-nowrap px-4 py-3 font-semibold text-slate-700">
-                    Tenor
-                  </th>
-                  <th className="whitespace-nowrap px-4 py-3 font-semibold text-slate-700">
-                    Interest Rate
-                  </th>
-                  <th className="whitespace-nowrap px-4 py-3 font-semibold text-slate-700">
-                    Maturity Amount
-                  </th>
-                  <th className="whitespace-nowrap px-4 py-3 font-semibold text-slate-700">
-                    Date Booked
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {bookings.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={7}
-                      className="px-4 py-12 text-center text-slate-500"
-                    >
-                      No bookings yet.
-                    </td>
-                  </tr>
-                ) : (
-                  bookings.map((booking) => (
-                    <tr
-                      key={String(booking._id)}
-                      className="border-b border-slate-100 transition-colors last:border-b-0 hover:bg-slate-50/80"
-                    >
-                      <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-slate-800 sm:text-sm">
-                        {booking.transactionId}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-slate-800">
-                        {booking.bankName}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-slate-800">
-                        {formatRupee(booking.amount)}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-slate-800">
-                        {booking.tenor}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-slate-800">
-                        {typeof booking.interestRate === "number"
-                          ? `${booking.interestRate}%`
-                          : "—"}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-slate-800">
-                        {formatRupee(booking.maturityAmount)}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-slate-700">
-                        {formatDateBooked(booking.createdAt)}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <AdminTable bookings={enrichedBookings} />
       </main>
     </div>
   );

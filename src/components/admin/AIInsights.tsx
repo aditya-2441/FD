@@ -43,7 +43,10 @@ export function AIInsights() {
 
       {insightText ? (
         <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
-          <pre className="whitespace-pre-wrap font-sans">{insightText}</pre>
+          <div
+            className="prose prose-sm max-w-none prose-ul:my-0 prose-li:my-1 prose-strong:text-blue-900"
+            dangerouslySetInnerHTML={{ __html: insightText }}
+          />
         </div>
       ) : null}
     </div>
