@@ -20,7 +20,7 @@ const initialMessage: ChatMessage = {
 
 export default function Home() {
   const router = useRouter();
-  const language: SupportedLanguage = "en";
+  const [language, setLanguage] = useState<SupportedLanguage>("en");
   const [messages, setMessages] = useState<ChatMessage[]>([initialMessage]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -182,14 +182,26 @@ export default function Home() {
       {/* HEADER: Locked to top */}
       <header className="flex-none shrink-0 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 sm:px-6">
         <h1 className="text-base font-semibold text-slate-900">Blostem Assistant</h1>
-        <button
-          type="button"
-          onClick={handleSignOut}
-          className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-rose-600 transition-colors hover:bg-rose-50"
-        >
-          <LogOut className="h-4 w-4" />
-          Sign Out
-        </button>
+        <div className="flex items-center gap-3">
+          <select
+            value={language}
+            onChange={(e) => setLanguage(e.target.value as SupportedLanguage)}
+            className="rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm font-medium text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            <option value="en">English</option>
+            <option value="hi">हिंदी (Hindi)</option>
+            <option value="mr">मराठी (Marathi)</option>
+            <option value="bn">বাংলা (Bengali)</option>
+          </select>
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-rose-600 transition-colors hover:bg-rose-50"
+          >
+            <LogOut className="h-4 w-4" />
+            Sign Out
+          </button>
+        </div>
       </header>
       
       {/* CHAT AREA: Flex-1 takes up remaining space and scrolls */}
