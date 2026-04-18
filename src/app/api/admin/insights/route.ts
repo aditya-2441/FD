@@ -3,6 +3,18 @@ import { GoogleGenAI } from "@google/genai";
 import connectToDatabase from "@/lib/mongodb";
 import Booking from "@/models/Booking";
 
+// Add this helper to ensure the JSON is valid before passing it to the SDK
+const getGcpCredentials = () => {
+  try {
+    const rawJson = process.env.GCP_CREDENTIALS_JSON;
+    if (!rawJson) throw new Error("GCP_CREDENTIALS_JSON is missing");
+    return JSON.parse(rawJson);
+  } catch (error) {
+    console.error("Failed to parse GCP Credentials:", error);
+    return null;
+  }
+};
+
 export async function GET() {
   try {
     await connectToDatabase();
@@ -18,10 +30,18 @@ export async function GET() {
       );
     }
 
+    const credentials = getGcpCredentials();
     const ai = new GoogleGenAI({
       vertexai: true,
       project: projectId,
       location,
+      ...(credentials
+        ? {
+            googleAuthOptions: {
+              credentials,
+            },
+          }
+        : {}),
     });
 
     const prompt = `You are a Chief Financial Officer analyzing Blostem's recent FD bookings. Here is the JSON data: ${JSON.stringify(

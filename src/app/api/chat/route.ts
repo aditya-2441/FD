@@ -4,6 +4,18 @@ import connectToDatabase from '@/lib/mongodb';
 import Chat from '@/models/Chat';
 import Bank from '@/models/Bank';
 
+// Add this helper to ensure the JSON is valid before passing it to the SDK
+const getGcpCredentials = () => {
+  try {
+    const rawJson = process.env.GCP_CREDENTIALS_JSON;
+    if (!rawJson) throw new Error("GCP_CREDENTIALS_JSON is missing");
+    return JSON.parse(rawJson);
+  } catch (error) {
+    console.error("Failed to parse GCP Credentials:", error);
+    return null;
+  }
+};
+
 export async function POST(req: NextRequest) {
   try {
     const { message, language, userId, history = [] } = await req.json();
@@ -32,10 +44,19 @@ export async function POST(req: NextRequest) {
     const effectiveRateString = rateString || "Suryoday (8.5%), Axis Bank (7.1%), HDFC (7.0%)";
 
     // 2. Initialize the AI
-const ai = new GoogleGenAI({
+    const credentials = getGcpCredentials();
+
+    const ai = new GoogleGenAI({
       vertexai: true,
       project: process.env.GCP_PROJECT_ID as string,
       location: process.env.GCP_LOCATION as string,
+      ...(credentials
+        ? {
+            googleAuthOptions: {
+              credentials,
+            },
+          }
+        : {}),
     });
 
     // Clean up the history array
