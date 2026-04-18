@@ -2,6 +2,7 @@ import type { ChatMessage } from "@/types/chat";
 import type { SupportedLanguage } from "@/types/chat";
 import { CheckCircle, Download, Volume2 } from "lucide-react";
 import { generateFDReceipt } from "@/lib/generateReceipt";
+import { speakMessage } from "@/lib/tts";
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -145,15 +146,7 @@ export function MessageBubble({ message, language }: MessageBubbleProps) {
             {message.role === "assistant" ? (
               <button
                 type="button"
-                onClick={() => {
-                  const targetLang = language === "hi" ? "hi-IN" : language === "mr" ? "mr-IN" : language === "bn" ? "bn-IN" : "en-IN";
-                  const utterance = new SpeechSynthesisUtterance(message.content);
-                  utterance.lang = targetLang;
-                  const voices = window.speechSynthesis.getVoices();
-                  const nativeVoice = voices.find(v => v.lang === targetLang || v.lang.startsWith(language)) || voices.find(v => v.lang.startsWith('en'));
-                  if (nativeVoice) utterance.voice = nativeVoice;
-                  window.speechSynthesis.speak(utterance);
-                }}
+                onClick={() => speakMessage(message.content, language)}
                 className="shrink-0 rounded-md p-1 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
                 aria-label="Replay message"
               >

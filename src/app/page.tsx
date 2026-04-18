@@ -9,6 +9,7 @@ import { MessageList } from "@/components/chat/MessageList";
 import type { ApiErrorResponse, ChatRequest, ChatResponse } from "@/types/api";
 import type { ChatMessage, SupportedLanguage } from "@/types/chat";
 import { auth } from "@/lib/firebase";
+import { speakMessage } from "@/lib/tts";
 
 const initialMessage: ChatMessage = {
   id: "initial-assistant-message",
@@ -30,6 +31,12 @@ export default function Home() {
   useEffect(() => {
     listEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
+
+  useEffect(() => {
+    return () => {
+      window.speechSynthesis.cancel();
+    };
+  }, []);
 
   useEffect(() => {
     const localUserId = localStorage.getItem("userId");
@@ -153,17 +160,7 @@ export default function Home() {
         createdAt: new Date().toISOString(),
       };
       setMessages((current) => [...current, assistantMessage]);
-
-      const targetLang = language === "hi" ? "hi-IN" : language === "mr" ? "mr-IN" : language === "bn" ? "bn-IN" : "en-IN";
-      const utterance = new SpeechSynthesisUtterance(data.reply);
-      utterance.lang = targetLang;
-      
-      // Force the browser to find a native regional voice
-      const voices = window.speechSynthesis.getVoices();
-      const nativeVoice = voices.find(v => v.lang === targetLang || v.lang.startsWith(language)) || voices.find(v => v.lang.startsWith('en'));
-      if (nativeVoice) utterance.voice = nativeVoice;
-      
-      window.speechSynthesis.speak(utterance);
+      await speakMessage(data.reply, language);
     } catch (error) {
       const fallbackMessage: ChatMessage = {
         id: crypto.randomUUID(),

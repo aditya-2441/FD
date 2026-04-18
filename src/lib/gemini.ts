@@ -1,5 +1,5 @@
 import type { ChatRequest } from "@/types/api";
-import { VertexAI } from "@google-cloud/vertexai";
+import { GoogleGenAI } from "@google/genai";
 
 const SYSTEM_PROMPT =
   "You are a friendly, patient financial advisor for rural Indian users. The user is asking about Fixed Deposits. Your goals: 1) Translate the response into the user's selected language. 2) Simplify ALL financial jargon (e.g., explain '12M tenor' as 'kept safely for 1 year'). 3) Keep answers concise (2-3 sentences max). 4) If they show intent to invest, guide them to confirm their bank choice and amount.";
@@ -16,12 +16,12 @@ function mapLanguageCode(code: ChatRequest["language"]): string {
 }
 
 export async function generateGeminiReply(payload: ChatRequest): Promise<string> {
-  const project = process.env.GOOGLE_CLOUD_PROJECT_ID;
-  const location = process.env.GOOGLE_CLOUD_LOCATION || "us-central1";
-  const model = process.env.GEMINI_MODEL || "gemini-1.5-flash";
+  const project = process.env.GCP_PROJECT_ID;
+  const location = process.env.GCP_LOCATION || "us-central1";
+  const model = process.env.GEMINI_MODEL || "gemini-2.5-pro";
 
   if (!project) {
-    throw new Error("GOOGLE_CLOUD_PROJECT_ID is missing.");
+    throw new Error("GCP_PROJECT_ID is missing.");
   }
 
   const languageLabel = mapLanguageCode(payload.language);
@@ -31,10 +31,34 @@ export async function generateGeminiReply(payload: ChatRequest): Promise<string>
       .map((message) => `${message.role}: ${message.content}`)
       .join("\n") ?? "";
 
-  const vertexAI = new VertexAI({ project, location });
-  const generativeModel = vertexAI.getGenerativeModel({ model });
+  const credentials = (() => {
+    try {
+      const rawJson = process.env.GCP_CREDENTIALS_JSON;
+      if (!rawJson) {
+        return null;
+      }
+      return JSON.parse(rawJson);
+    } catch (error) {
+      console.error("Failed to parse GCP Credentials:", error);
+      return null;
+    }
+  })();
 
-  const result = await generativeModel.generateContent({
+  const ai = new GoogleGenAI({
+    vertexai: true,
+    project,
+    location,
+    ...(credentials
+      ? {
+          googleAuthOptions: {
+            credentials,
+          },
+        }
+      : {}),
+  });
+
+  const result = await ai.models.generateContent({
+    model,
     contents: [
       {
         role: "user",
@@ -45,17 +69,13 @@ export async function generateGeminiReply(payload: ChatRequest): Promise<string>
         ],
       },
     ],
-    generationConfig: {
+    config: {
       temperature: 0.6,
       maxOutputTokens: 200,
     },
   });
 
-  const data = (await result.response) as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-  };
-
-  const reply = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+  const reply = result.text?.trim();
   if (!reply) {
     throw new Error("Gemini returned an empty response.");
   }

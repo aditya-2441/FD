@@ -5,6 +5,8 @@ import User from "@/models/User";
 import Link from "next/link";
 import { AdminTable } from "@/components/admin/AdminTable";
 
+export const dynamic = "force-dynamic";
+
 function formatRupee(value: number): string {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
